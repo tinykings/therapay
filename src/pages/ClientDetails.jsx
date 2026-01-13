@@ -5,11 +5,11 @@ import { useData } from '../context/DataContext';
 
 function ClientDetails() {
   const { id } = useParams();
-  const { data, addSession } = useData();
+  const { data, addSession, settings } = useData();
   const client = data.clients.find(c => c.id === id);
 
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
-  const [sessionAmount, setSessionAmount] = useState(70);
+  const [sessionAmount, setSessionAmount] = useState(settings.defaultAmount || 70);
   const [showAddForm, setShowAddForm] = useState(false);
 
   if (!client) {
@@ -26,7 +26,7 @@ function ClientDetails() {
     // Reset defaults (keep date as is or reset? Resetting is usually better for rapid entry of different days, but staying is good for bulk entry. I'll reset amount but keep date for now or reset date to today).
     // Let's reset to defaults for clean state.
     setSessionDate(new Date().toISOString().split('T')[0]);
-    setSessionAmount(70);
+    setSessionAmount(settings.defaultAmount || 70);
   };
 
   const totalClientIncome = (client.sessions || []).reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);

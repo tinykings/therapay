@@ -7,6 +7,7 @@ function Dashboard() {
   const { data, loading, error, settings, addClient } = useData();
   const [newClientName, setNewClientName] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   if (!settings.token || !settings.gistId) {
     return (
@@ -20,18 +21,59 @@ function Dashboard() {
     return <div className="text-center"><Spinner animation="border" /></div>;
   }
 
-  // Calculate Total Income for current year
-  const currentYear = new Date().getFullYear();
+  // Calculate available years
+  const availableYears = new Set([new Date().getFullYear()]);
+  data.clients.forEach(client => {
+    if (client.sessions) {
+      client.sessions.forEach(session => {
+        availableYears.add(new Date(session.date).getFullYear());
+      });
+    }
+  });
+  const sortedYears = Array.from(availableYears).sort((a, b) => b - a);
+
+  // Calculate Total Income for selected year
   let totalIncome = 0;
   
   data.clients.forEach(client => {
     if (client.sessions) {
       client.sessions.forEach(session => {
-        if (new Date(session.date).getFullYear() === currentYear) {
+        if (new Date(session.date).getFullYear() === parseInt(selectedYear)) {
           totalIncome += parseFloat(session.amount) || 0;
         }
       });
     }
+  });
+
+  // Process and sort clients
+  const processedClients = data.clients.map(client => {
+    let lastSession = null;
+    let yearTotal = 0;
+
+    if (client.sessions && client.sessions.length > 0) {
+      // Find most recent session
+      // Create a copy to sort safely
+      const sortedSessions = [...client.sessions].sort((a, b) => new Date(b.date) - new Date(a.date));
+      lastSession = sortedSessions[0];
+
+      // Calculate total for selected year
+      client.sessions.forEach(session => {
+        if (new Date(session.date).getFullYear() === parseInt(selectedYear)) {
+          yearTotal += parseFloat(session.amount) || 0;
+        }
+      });
+    }
+    return { ...client, lastSession, yearTotal };
+  });
+
+  const sortedClients = processedClients.sort((a, b) => {
+    const dateA = a.lastSession ? new Date(a.lastSession.date).getTime() : 0;
+    const dateB = b.lastSession ? new Date(b.lastSession.date).getTime() : 0;
+    
+    if (dateA !== dateB) {
+      return dateB - dateA; // Newest first
+    }
+    return a.name.localeCompare(b.name); // Alphabetical fallback
   });
 
   const handleAddClient = (e) => {
@@ -50,16 +92,26 @@ function Dashboard() {
       <Row className="mb-4">
         <Col md={6}>
           <Card bg="success" text="white" className="mb-3">
-            <Card.Header>Total Income ({currentYear})</Card.Header>
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <span>Total Income</span>
+              <Form.Select 
+                size="sm" 
+                style={{ width: 'auto', color: 'black' }} // Force text color for visibility
+                value={selectedYear} 
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              >
+                {sortedYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </Form.Select>
+            </Card.Header>
             <Card.Body>
               <Card.Title className="display-4">${totalIncome.toFixed(2)}</Card.Title>
             </Card.Body>
           </Card>
-        </Col>
-        <Col md={6} className="d-flex align-items-center justify-content-end">
-           <Button variant="primary" size="lg" onClick={() => setShowAddForm(!showAddForm)}>
+          <Button variant="primary" size="lg" className="w-100" onClick={() => setShowAddForm(!showAddForm)}>
              {showAddForm ? 'Cancel' : '+ New Client'}
-           </Button>
+          </Button>
         </Col>
       </Row>
 
@@ -85,11 +137,11 @@ function Dashboard() {
       )}
 
       <h3>Clients</h3>
-      {data.clients.length === 0 ? (
+      {sortedClients.length === 0 ? (
         <p className="text-muted">No clients yet. Add one to get started.</p>
       ) : (
         <ListGroup>
-          {data.clients.map(client => (
+          {sortedClients.map(client => (
             <ListGroup.Item 
               key={client.id} 
               action 
@@ -98,11 +150,23 @@ function Dashboard() {
               className="d-flex justify-content-between align-items-center"
             >
               <div>
-                <span className="fw-bold">{client.name}</span>
+                <span className="fw-bold d-block">
+                  {client.name} 
+                  <span className="text-muted fw-normal ms-2 small">
+                    ({client.sessions ? client.sessions.length : 0})
+                  </span>
+                </span>
+                {client.lastSession && (
+                  <small className="text-muted">
+                    Last: {new Date(client.lastSession.date).toLocaleDateString()}
+                  </small>
+                )}
               </div>
-              <small className="text-muted">
-                {client.sessions ? client.sessions.length : 0} sessions
-              </small>
+              <div className="text-end">
+                 <span className="badge bg-light text-dark border">
+                   ${client.yearTotal.toFixed(2)}
+                 </span>
+              </div>
             </ListGroup.Item>
           ))}
         </ListGroup>

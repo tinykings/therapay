@@ -9,7 +9,12 @@ export const DataProvider = ({ children }) => {
   const [data, setData] = useState({ clients: [] });
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('therapay_settings');
-    return saved ? JSON.parse(saved) : { token: '', gistId: '' };
+    const parsed = saved ? JSON.parse(saved) : {};
+    return {
+      token: parsed.token || '',
+      gistId: parsed.gistId || '',
+      defaultAmount: parsed.defaultAmount || 70
+    };
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

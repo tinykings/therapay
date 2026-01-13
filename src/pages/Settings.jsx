@@ -60,6 +60,17 @@ function Settings() {
               />
             </Form.Group>
 
+            <Form.Group className="mb-3" controlId="defaultAmount">
+              <Form.Label>Default Session Amount ($)</Form.Label>
+              <Form.Control
+                type="number"
+                name="defaultAmount"
+                value={formData.defaultAmount}
+                onChange={handleChange}
+                required
+              />
+            </Form.Group>
+
             <Button variant="primary" type="submit">
               Save Settings
             </Button>
