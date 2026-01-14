@@ -5,7 +5,7 @@ import { useData } from '../context/DataContext';
 
 function ClientDetails() {
   const { id } = useParams();
-  const { data, addSession, settings } = useData();
+  const { data, addSession, deleteSession, settings } = useData();
   const client = data.clients.find(c => c.id === id);
 
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -88,18 +88,32 @@ function ClientDetails() {
             <tr>
               <th>Date</th>
               <th className="text-end">Amount</th>
+              <th className="text-end" style={{ width: '50px' }}></th>
             </tr>
           </thead>
           <tbody>
             {!client.sessions || client.sessions.length === 0 ? (
               <tr>
-                <td colSpan="2" className="text-center text-muted">No sessions recorded.</td>
+                <td colSpan="3" className="text-center text-muted">No sessions recorded.</td>
               </tr>
             ) : (
               client.sessions.map((session) => (
                 <tr key={session.id}>
                   <td>{new Date(session.date).toLocaleDateString()}</td>
                   <td className="text-end">${parseFloat(session.amount).toFixed(2)}</td>
+                  <td className="text-end">
+                    <Button 
+                      variant="link" 
+                      className="text-danger p-0" 
+                      onClick={() => {
+                        if (window.confirm('Delete this session?')) {
+                          deleteSession(client.id, session.id);
+                        }
+                      }}
+                    >
+                      &times;
+                    </Button>
+                  </td>
                 </tr>
               ))
             )}

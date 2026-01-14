@@ -134,6 +134,25 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const deleteClient = (clientId) => {
+    const newData = {
+      ...data,
+      clients: data.clients.filter((c) => c.id !== clientId),
+    };
+    saveData(newData);
+  };
+
+  const deleteSession = (clientId, sessionId) => {
+    const newData = { ...data };
+    const clientIndex = newData.clients.findIndex((c) => c.id === clientId);
+    if (clientIndex > -1) {
+      newData.clients[clientIndex].sessions = newData.clients[clientIndex].sessions.filter(
+        (s) => s.id !== sessionId
+      );
+      saveData(newData);
+    }
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -144,6 +163,8 @@ export const DataProvider = ({ children }) => {
         updateSettings,
         addClient,
         addSession,
+        deleteClient,
+        deleteSession,
         reload: loadData
       }}
     >

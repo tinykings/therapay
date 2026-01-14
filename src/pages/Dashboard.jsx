@@ -4,7 +4,7 @@ import { Card, Button, ListGroup, Form, Row, Col, Alert, Spinner } from 'react-b
 import { useData } from '../context/DataContext';
 
 function Dashboard() {
-  const { data, loading, error, settings, addClient } = useData();
+  const { data, loading, error, settings, addClient, deleteClient } = useData();
   const [newClientName, setNewClientName] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -162,10 +162,23 @@ function Dashboard() {
                   </small>
                 )}
               </div>
-              <div className="text-end">
-                 <span className="badge bg-light text-dark border">
+              <div className="d-flex align-items-center">
+                 <span className="badge bg-light text-dark border me-3">
                    ${client.yearTotal.toFixed(2)}
                  </span>
+                 <Button 
+                    variant="outline-danger" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (window.confirm(`Are you sure you want to delete ${client.name}?`)) {
+                        deleteClient(client.id);
+                      }
+                    }}
+                 >
+                    &times;
+                 </Button>
               </div>
             </ListGroup.Item>
           ))}
