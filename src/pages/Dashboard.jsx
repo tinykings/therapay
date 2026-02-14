@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, ListGroup, Form, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { useData } from '../context/DataContext';
+import { calculateTaxEstimate } from '../utils/tax';
+import TaxEstimateCard from '../components/TaxEstimateCard';
 
 function Dashboard() {
   const { data, loading, error, settings, addClient, deleteClient } = useData();
@@ -44,6 +46,13 @@ function Dashboard() {
       });
     }
   });
+
+  // Total deductions for selected year
+  const totalDeductions = (data.deductions || [])
+    .filter(d => new Date(d.date + 'T00:00:00').getFullYear() === parseInt(selectedYear))
+    .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+
+  const tax = calculateTaxEstimate(totalIncome, totalDeductions);
 
   // Process and sort clients
   const processedClients = data.clients.map(client => {
@@ -94,10 +103,10 @@ function Dashboard() {
           <Card bg="success" text="white" className="mb-3">
             <Card.Header className="d-flex justify-content-between align-items-center">
               <span>Total Income</span>
-              <Form.Select 
-                size="sm" 
-                style={{ width: 'auto', color: 'black' }} // Force text color for visibility
-                value={selectedYear} 
+              <Form.Select
+                size="sm"
+                style={{ width: 'auto', color: 'black' }}
+                value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               >
                 {sortedYears.map(year => (
@@ -112,6 +121,9 @@ function Dashboard() {
           <Button variant="primary" size="lg" className="w-100" onClick={() => setShowAddForm(!showAddForm)}>
              {showAddForm ? 'Cancel' : '+ New Client'}
           </Button>
+        </Col>
+        <Col md={6}>
+          <TaxEstimateCard totalIncome={totalIncome} totalDeductions={totalDeductions} tax={tax} />
         </Col>
       </Row>
 
