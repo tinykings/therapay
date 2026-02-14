@@ -75,15 +75,7 @@ function Dashboard() {
     return { ...client, lastSession, yearTotal };
   });
 
-  const sortedClients = processedClients.sort((a, b) => {
-    const dateA = a.lastSession ? new Date(a.lastSession.date).getTime() : 0;
-    const dateB = b.lastSession ? new Date(b.lastSession.date).getTime() : 0;
-    
-    if (dateA !== dateB) {
-      return dateB - dateA; // Newest first
-    }
-    return a.name.localeCompare(b.name); // Alphabetical fallback
-  });
+  const sortedClients = processedClients.sort((a, b) => a.name.localeCompare(b.name));
 
   const handleAddClient = (e) => {
     e.preventDefault();
