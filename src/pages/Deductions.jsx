@@ -18,7 +18,7 @@ const CATEGORIES = [
   'Other',
 ];
 
-function calculateTaxEstimate(grossIncome, totalDeductions) {
+function computeTax(grossIncome, totalDeductions) {
   const netIncome = Math.max(0, grossIncome - totalDeductions);
 
   // Self-employment tax: 15.3% on 92.35% of net income
@@ -55,17 +55,21 @@ function calculateTaxEstimate(grossIncome, totalDeductions) {
   }
 
   const totalTax = seTax + incomeTax;
+  return { netIncome, seTax, incomeTax, totalTax };
+}
 
-  // Calculate suggested additional deductions to bring tax near $0
-  // Binary search approach for simplicity
+function calculateTaxEstimate(grossIncome, totalDeductions) {
+  const result = computeTax(grossIncome, totalDeductions);
+
+  // Binary search for suggested additional deductions to bring tax near $0
   let suggestedExtra = 0;
-  if (totalTax > 0) {
+  if (result.totalTax > 0) {
     let lo = 0;
-    let hi = netIncome;
+    let hi = result.netIncome;
     for (let i = 0; i < 50; i++) {
       const mid = (lo + hi) / 2;
-      const testResult = calculateTaxEstimate(grossIncome, totalDeductions + mid);
-      if (testResult.totalTax > 1) {
+      const test = computeTax(grossIncome, totalDeductions + mid);
+      if (test.totalTax > 1) {
         lo = mid;
       } else {
         hi = mid;
@@ -74,7 +78,7 @@ function calculateTaxEstimate(grossIncome, totalDeductions) {
     suggestedExtra = Math.ceil(hi);
   }
 
-  return { netIncome, seTax, incomeTax, totalTax, suggestedExtra };
+  return { ...result, suggestedExtra };
 }
 
 function Deductions() {
