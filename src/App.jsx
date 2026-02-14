@@ -4,6 +4,7 @@ import { Container, Navbar, Nav } from 'react-bootstrap';
 import Dashboard from './pages/Dashboard';
 import ClientDetails from './pages/ClientDetails';
 import Settings from './pages/Settings';
+import Deductions from './pages/Deductions';
 import { DataProvider } from './context/DataContext';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
             <Navbar.Collapse id="basic-navbar-nav">
               <Nav className="me-auto">
                 <Nav.Link as={Link} to="/">Dashboard</Nav.Link>
+                <Nav.Link as={Link} to="/deductions">Deductions</Nav.Link>
                 <Nav.Link as={Link} to="/settings">Settings</Nav.Link>
               </Nav>
             </Navbar.Collapse>
@@ -26,6 +28,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/client/:id" element={<ClientDetails />} />
+            <Route path="/deductions" element={<Deductions />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Container>

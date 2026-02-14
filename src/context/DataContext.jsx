@@ -6,7 +6,7 @@ const DataContext = createContext();
 export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
-  const [data, setData] = useState({ clients: [] });
+  const [data, setData] = useState({ clients: [], deductions: [] });
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('therapay_settings');
     const parsed = saved ? JSON.parse(saved) : {};
@@ -58,10 +58,11 @@ export const DataProvider = ({ children }) => {
         const content = JSON.parse(gist.files[FILENAME].content);
         // Ensure structure
         if (!content.clients) content.clients = [];
+        if (!content.deductions) content.deductions = [];
         setData(content);
       } else {
         // Initialize if file doesn't exist (though usually it should)
-        setData({ clients: [] });
+        setData({ clients: [], deductions: [] });
       }
     } catch (err) {
       console.error(err);
@@ -142,6 +143,25 @@ export const DataProvider = ({ children }) => {
     saveData(newData);
   };
 
+  const addDeduction = (deduction) => {
+    const newDeduction = { id: uuidv4(), ...deduction };
+    const newData = {
+      ...data,
+      deductions: [...(data.deductions || []), newDeduction].sort(
+        (a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00')
+      ),
+    };
+    saveData(newData);
+  };
+
+  const deleteDeduction = (deductionId) => {
+    const newData = {
+      ...data,
+      deductions: (data.deductions || []).filter((d) => d.id !== deductionId),
+    };
+    saveData(newData);
+  };
+
   const deleteSession = (clientId, sessionId) => {
     const newData = { ...data };
     const clientIndex = newData.clients.findIndex((c) => c.id === clientId);
@@ -165,6 +185,8 @@ export const DataProvider = ({ children }) => {
         addSession,
         deleteClient,
         deleteSession,
+        addDeduction,
+        deleteDeduction,
         reload: loadData
       }}
     >
