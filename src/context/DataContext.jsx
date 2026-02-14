@@ -129,7 +129,7 @@ export const DataProvider = ({ children }) => {
       }
       newData.clients[clientIndex].sessions.push(newSession);
       // Sort sessions by date descending
-      newData.clients[clientIndex].sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+      newData.clients[clientIndex].sessions.sort((a, b) => new Date(b.date + 'T00:00:00') - new Date(a.date + 'T00:00:00'));
       saveData(newData);
     }
   };

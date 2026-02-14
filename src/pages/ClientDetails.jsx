@@ -99,7 +99,7 @@ function ClientDetails() {
             ) : (
               client.sessions.map((session) => (
                 <tr key={session.id}>
-                  <td>{new Date(session.date).toLocaleDateString()}</td>
+                  <td>{new Date(session.date + 'T00:00:00').toLocaleDateString()}</td>
                   <td className="text-end">${parseFloat(session.amount).toFixed(2)}</td>
                   <td className="text-end">
                     <Button 
