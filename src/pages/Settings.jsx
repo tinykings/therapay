@@ -36,18 +36,6 @@ function Settings() {
             2. Create a Gist with a file named <code>therapay-data.json</code> containing <code>{`{ "clients": [] }`}</code>.
           </Card.Text>
           <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3" controlId="token">
-              <Form.Label>GitHub Personal Access Token</Form.Label>
-              <Form.Control
-                type="password"
-                name="token"
-                value={formData.token}
-                onChange={handleChange}
-                placeholder="ghp_..."
-                required
-              />
-            </Form.Group>
-
             <Form.Group className="mb-3" controlId="gistId">
               <Form.Label>Gist ID</Form.Label>
               <Form.Control
@@ -56,6 +44,20 @@ function Settings() {
                 value={formData.gistId}
                 onChange={handleChange}
                 placeholder="e.g. 8f6d..."
+                autoComplete="username"
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="token">
+              <Form.Label>GitHub Personal Access Token</Form.Label>
+              <Form.Control
+                type="password"
+                name="token"
+                value={formData.token}
+                onChange={handleChange}
+                placeholder="ghp_..."
+                autoComplete="current-password"
                 required
               />
             </Form.Group>
