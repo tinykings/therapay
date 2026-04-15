@@ -5,6 +5,73 @@ const DataContext = createContext();
 
 export const useData = () => useContext(DataContext);
 
+const generateKey = () => {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode(...array));
+};
+
+const deriveKey = async (password) => {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  );
+  return { key: await crypto.subtle.importKey('raw', bits, 'AES-GCM', false, ['encrypt', 'decrypt']), salt };
+};
+
+const encrypt = async (data, key) => {
+  const encoder = new TextEncoder();
+  const { key: aesKey, salt } = await deriveKey(key);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    encoder.encode(JSON.stringify(data))
+  );
+  const combined = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+  combined.set(salt, 0);
+  combined.set(iv, salt.length);
+  combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
+  return btoa(String.fromCharCode(...combined));
+};
+
+const decrypt = async (encryptedBase64, key) => {
+  const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+  const salt = combined.slice(0, 16);
+  const iv = combined.slice(16, 28);
+  const ciphertext = combined.slice(28);
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(key),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  );
+  const aesKey = await crypto.subtle.importKey('raw', bits, 'AES-GCM', false, ['decrypt']);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    ciphertext
+  );
+  return JSON.parse(new TextDecoder().decode(plaintext));
+};
+
 export const DataProvider = ({ children }) => {
   const [data, setData] = useState({ clients: [], deductions: [] });
   const [settings, setSettings] = useState(() => {
@@ -13,6 +80,7 @@ export const DataProvider = ({ children }) => {
     return {
       token: parsed.token || '',
       gistId: parsed.gistId || '',
+      encryptionKey: parsed.encryptionKey || '',
       defaultAmount: parsed.defaultAmount || 70
     };
   });
@@ -28,7 +96,7 @@ export const DataProvider = ({ children }) => {
   }, [settings]);
 
   const cleanGistId = (id) => {
-    // If the user pasted a full URL, extract the last part
+    if (!id) return '';
     if (id.includes('/')) {
         return id.split('/').pop();
     }
@@ -36,16 +104,25 @@ export const DataProvider = ({ children }) => {
   };
 
   const loadData = async () => {
+    if (!settings.gistId || !settings.token) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const cleanId = cleanGistId(settings.gistId);
 
     try {
-      const response = await fetch(`https://api.github.com/gists/${cleanId}?t=${Date.now()}`, {
-        headers: {
-          Authorization: `Bearer ${settings.token}`,
-        },
-      });
+      let response;
+      try {
+        response = await fetch(`https://api.github.com/gists/${cleanId}?t=${Date.now()}`, {
+          headers: {
+            Authorization: `Bearer ${settings.token}`,
+          },
+        });
+      } catch (networkErr) {
+        throw new Error('Network error. Check your connection and token.');
+      }
 
       if (!response.ok) {
         if (response.status === 404) throw new Error('Gist not found. Check ID.');
@@ -55,30 +132,53 @@ export const DataProvider = ({ children }) => {
 
       const gist = await response.json();
       if (gist.files && gist.files[FILENAME]) {
-        const content = JSON.parse(gist.files[FILENAME].content);
-        // Ensure structure
+        let content;
+        const rawContent = gist.files[FILENAME].content;
+
+        if (settings.encryptionKey) {
+          try {
+            content = await decrypt(rawContent, settings.encryptionKey);
+          } catch (e) {
+            throw new Error('Decryption failed. Check your encryption key.');
+          }
+        } else {
+          try {
+            content = JSON.parse(rawContent);
+          } catch (e) {
+            throw new Error('Invalid data format in gist.');
+          }
+        }
+
         if (!content.clients) content.clients = [];
         if (!content.deductions) content.deductions = [];
         setData(content);
       } else {
-        // Initialize if file doesn't exist (though usually it should)
         setData({ clients: [], deductions: [] });
       }
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      const msg = err.message === 'Failed to fetch'
+        ? 'Network error. Check your connection and token.'
+        : err.message;
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const saveData = async (newData) => {
-    // Optimistic update
     setData(newData);
 
     if (!settings.token || !settings.gistId) return;
 
     const cleanId = cleanGistId(settings.gistId);
+
+    let content;
+    if (settings.encryptionKey) {
+      content = await encrypt(newData, settings.encryptionKey);
+    } else {
+      content = JSON.stringify(newData, null, 2);
+    }
 
     try {
       await fetch(`https://api.github.com/gists/${cleanId}`, {
@@ -89,9 +189,7 @@ export const DataProvider = ({ children }) => {
         },
         body: JSON.stringify({
           files: {
-            [FILENAME]: {
-              content: JSON.stringify(newData, null, 2),
-            },
+            [FILENAME]: { content },
           },
         }),
       });
@@ -173,6 +271,24 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `therapay-data-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (importedData) => {
+    const newData = {
+      clients: importedData.clients || [],
+      deductions: importedData.deductions || [],
+    };
+    saveData(newData);
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -187,6 +303,8 @@ export const DataProvider = ({ children }) => {
         deleteSession,
         addDeduction,
         deleteDeduction,
+        exportData,
+        importData,
         reload: loadData
       }}
     >
